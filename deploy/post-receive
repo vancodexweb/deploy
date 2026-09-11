@@ -21,9 +21,7 @@ while read -r _oldrev _newrev ref; do
     exit 1
   fi
 
-  docker compose build
-  docker compose up -d
-  docker image prune -f
+  bash deploy/zero-downtime-deploy.sh
 
   echo "==> Деплой завершён"
 done

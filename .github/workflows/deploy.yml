@@ -35,10 +35,10 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             ./ "$SSH_USER@$SSH_HOST:/opt/apps/feedback-app/"
 
-      - name: Build and restart container
+      - name: Build and restart container (zero-downtime)
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
-            "cd /opt/apps/feedback-app && docker compose build && docker compose up -d && docker image prune -f"
+            "bash /opt/apps/feedback-app/deploy/zero-downtime-deploy.sh"

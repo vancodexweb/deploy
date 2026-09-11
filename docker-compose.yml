@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    image: feedback-app:latest
     container_name: feedback-app
     restart: unless-stopped
     env_file:
