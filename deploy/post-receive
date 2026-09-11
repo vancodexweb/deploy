@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+WORK_TREE="/opt/apps/feedback-app"
+GIT_DIR_PATH="/opt/git/feedback-app.git"
+BRANCH="main"
+
+while read -r _oldrev _newrev ref; do
+  if [ "$ref" != "refs/heads/$BRANCH" ]; then
+    continue
+  fi
+
+  echo "==> Деплой ветки $BRANCH в $WORK_TREE"
+  mkdir -p "$WORK_TREE"
+  git --work-tree="$WORK_TREE" --git-dir="$GIT_DIR_PATH" checkout -f "$BRANCH"
+
+  cd "$WORK_TREE"
+
+  if [ ! -f .env ]; then
+    echo "!! Не найден $WORK_TREE/.env — создайте его на основе .env.example перед первым деплоем" >&2
+    exit 1
+  fi
+
+  docker compose build
+  docker compose up -d
+  docker image prune -f
+
+  echo "==> Деплой завершён"
+done

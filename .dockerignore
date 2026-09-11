@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+npm-debug.log*
+
+.env
+.env.*
+!.env.example
+
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
+DEPLOY.md
+infra
+deploy

@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    container_name: feedback-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+      VIRTUAL_PORT: "3000"
+      LETSENCRYPT_HOST: ${LETSENCRYPT_HOST}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    expose:
+      - "3000"
+    networks:
+      - nginx-proxy
+
+networks:
+  nginx-proxy:
+    external: true
