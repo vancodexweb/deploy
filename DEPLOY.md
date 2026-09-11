@@ -1,9 +1,9 @@
 # Деплой на сервер
 
-Домен: `vancodex.tech`. Схема: `git push` прямо на сервер → git-хук сам пересобирает и
-перезапускает Docker-контейнер → nginx-proxy автоматически подхватывает контейнер,
-проксирует на него домен и выпускает SSL-сертификат Let's Encrypt. Заходить на сервер
-после первичной настройки не нужно.
+Домен: `vancodex.tech`. Схема: `git push` в GitHub (`origin`, ветка `main`) → GitHub Actions
+сам по SSH подключается к серверу, синхронизирует код и пересобирает Docker-контейнер →
+nginx-proxy автоматически подхватывает контейнер, проксирует на него домен и выпускает
+SSL-сертификат Let's Encrypt. Заходить на сервер после первичной настройки не нужно.
 
 Для того чтобы в будущем разворачивать другие проекты без конфликтов в nginx, используется
 готовая связка **nginx-proxy + acme-companion**: она сама генерирует конфиг nginx и
@@ -47,27 +47,12 @@ docker compose up -d
    - в ответе найдите `"chat":{"id":...}` — это и есть `TELEGRAM_CHAT_ID`
      (для личных сообщений — положительное число, для групп — отрицательное).
 
-## 3. Bare-репозиторий на сервере (авто-деплой по `git push`)
+## 3. Рабочая директория на сервере
 
 ```bash
-mkdir -p /opt/git/feedback-app.git
-cd /opt/git/feedback-app.git
-git init --bare
-
 mkdir -p /opt/apps/feedback-app
 ```
 
-Скопируйте на сервер файл `deploy/post-receive` из репозитория в
-`/opt/git/feedback-app.git/hooks/post-receive` и сделайте его исполняемым:
-
-```bash
-chmod +x /opt/git/feedback-app.git/hooks/post-receive
-```
-
-Проверьте пути `WORK_TREE` и `GIT_DIR_PATH` внутри хука — они должны совпадать с путями выше
-(`/opt/apps/feedback-app` и `/opt/git/feedback-app.git`).
-
-Хук проверяет наличие `.env` перед каждым деплоем и остановится с ошибкой, если его нет.
 Создайте `/opt/apps/feedback-app/.env` вручную (возьмите за основу `.env.example` из
 репозитория) и впишите туда реальные `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, а также:
 
@@ -77,27 +62,44 @@ LETSENCRYPT_HOST=vancodex.tech
 LETSENCRYPT_EMAIL=you@example.com
 ```
 
-## 4. Локально: добавляем сервер как git remote и пушим
+Этот файл GitHub Actions не трогает (исключён из синхронизации), поэтому реальные секреты
+никогда не попадают в git и в логи CI.
 
-```bash
-git remote add production ssh://USER@SERVER_IP/opt/git/feedback-app.git
-git push production main
-```
+## 4. GitHub Actions (авто-деплой по `git push`)
 
-Хук `post-receive` на сервере сам сделает `git checkout`, `docker compose build`,
-`docker compose up -d` и подчистит старые образы. Заходить на сервер не нужно — весь вывод
-сборки вы увидите прямо в терминале после `git push`.
+Workflow уже лежит в [.github/workflows/deploy.yml](.github/workflows/deploy.yml): при пуше
+в `main` он по SSH синхронизирует код на сервер (`rsync`, без `.git`/`.env`/`node_modules`) и
+выполняет `docker compose build && docker compose up -d` в `/opt/apps/feedback-app`.
 
-Через несколько секунд после первого пуша `acme-companion` выпустит SSL-сертификат для
-`vancodex.tech`, и сайт станет доступен по `https://vancodex.tech`.
+Нужно один раз:
+
+1. Сгенерировать отдельный SSH-ключ для CI (не тот, что используется для ручного захода на
+   сервер) и добавить его публичную часть в `~/.ssh/authorized_keys` на сервере (от пользователя,
+   под которым будет разворачиваться сайт).
+2. В репозитории на GitHub: **Settings → Secrets and variables → Actions → New repository
+   secret** — добавить три секрета:
+   - `SSH_HOST` — IP или домен сервера;
+   - `SSH_USER` — пользователь для SSH (например `root`);
+   - `SSH_KEY` — содержимое приватного ключа из шага 1 целиком (вместе со строками
+     `-----BEGIN...-----` / `-----END...-----`).
+3. Запушить в `main` (или вручную перезапустить последний workflow run во вкладке **Actions**,
+   если секреты добавлены уже после первого пуша).
 
 ## 5. Как это работает дальше
 
-Любой следующий `git push production main` автоматически:
-1. обновляет код в `/opt/apps/feedback-app` на сервере;
+Любой следующий `git push origin main` автоматически:
+1. синхронизирует код на сервер по SSH (`rsync --delete`, старые файлы, которых больше нет в
+   репозитории, тоже удаляются — кроме `.env`);
 2. пересобирает Docker-образ (`docker compose build`);
 3. перезапускает контейнер (`docker compose up -d`) без даунтайма для остальных проектов;
 4. чистит неиспользуемые старые образы.
+
+### Альтернатива: прямой push на сервер
+
+В репозитории также настроен git-хук [deploy/post-receive](deploy/post-receive) для деплоя
+без GitHub — прямым `git push` на bare-репозиторий сервера (`git remote add production
+ssh://user@host/opt/git/feedback-app.git`). Он не обязателен при использовании GitHub Actions,
+но оставлен как рабочий резервный способ деплоя, если понадобится задеплоить не пушая в GitHub.
 
 ## 6. Как добавить ещё один проект в будущем без конфликтов
 
