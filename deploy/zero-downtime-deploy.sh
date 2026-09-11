@@ -4,10 +4,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 IMAGE="feedback-app:latest"
+VOLUME="feedback-app-launch-data"
 OLD=feedback-app
 NEW=feedback-app-new
 
 docker compose build
+docker volume create "$VOLUME" >/dev/null
 
 docker rm -f "$NEW" >/dev/null 2>&1 || true
 
@@ -15,6 +17,7 @@ docker run -d --name "$NEW" \
   --network nginx-proxy \
   --env-file .env \
   --restart unless-stopped \
+  -v "$VOLUME:/app/data" \
   "$IMAGE"
 
 echo "==> Waiting for $NEW to become healthy"

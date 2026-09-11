@@ -21,10 +21,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV LAUNCH_STATE_DIR=/app/data
 
 HEALTHCHECK --interval=3s --timeout=2s --start-period=5s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1

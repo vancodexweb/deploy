@@ -1,5 +1,11 @@
 :root {
-  --background: #f4f6fb;
+  --background: #f5f5f5;
+  --ink: #111111;
+  --border: #111111;
+}
+
+html {
+  font-size: 87.5%;
 }
 
 html,
@@ -9,4 +15,80 @@ body {
 
 body {
   background: var(--background);
+  color: var(--ink);
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+}
+
+.card {
+  border-radius: 0;
+  border: 1px solid var(--border);
+  box-shadow: none;
+  background: #fff;
+}
+
+.form-control,
+.form-select {
+  border-radius: 0;
+  border-color: var(--border);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.btn-primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:disabled {
+  background: #333;
+  border-color: #333;
+}
+
+.launch-badge {
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+
+.launch-badge__label {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+.launch-badge__sub {
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.launch-badge__timer {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  font-weight: 600;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.launch-badge__timer em {
+  display: block;
+  font-style: normal;
+  font-size: 0.65rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: #777;
+  text-transform: uppercase;
 }

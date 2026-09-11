@@ -15,7 +15,13 @@ services:
       - "3000"
     networks:
       - nginx-proxy
+    volumes:
+      - launch-data:/app/data
 
 networks:
   nginx-proxy:
     external: true
+
+volumes:
+  launch-data:
+    name: feedback-app-launch-data
