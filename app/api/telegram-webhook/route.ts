@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { readLaunchState, writeLaunchState } from "@/lib/launchState";
+import { readSiteState, writeSiteState, type Banner } from "@/lib/siteState";
+import { broadcast } from "@/lib/eventBus";
+import { withServerTime } from "@/lib/sitePayload";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,15 @@ function parseSetDate(input: string): Date | null {
   }
 
   return null;
+}
+
+function parseBanner(input: string): Banner | null {
+  const separatorIndex = input.indexOf("|");
+  if (separatorIndex === -1) return null;
+  const title = input.slice(0, separatorIndex).trim();
+  const message = input.slice(separatorIndex + 1).trim();
+  if (!title || !message) return null;
+  return { title, message };
 }
 
 function formatRemaining(ms: number): string {
@@ -70,6 +81,10 @@ const HELP_TEXT = [
   "/setdate 2026-10-01 12:00 — задать точную дату (время МСК)",
   "/freeze — приостановить обратный отсчёт на сайте",
   "/unfreeze — возобновить отсчёт",
+  "",
+  "Плашка с объявлением на сайте:",
+  "/banner Заголовок | Текст сообщения — показать (или заменить)",
+  "/banner_clear — убрать плашку",
 ].join("\n");
 
 export async function POST(request: Request) {
@@ -100,9 +115,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const [command, ...rest] = text.trim().split(/\s+/);
-  const arg = rest.join(" ");
-  const state = await readLaunchState();
+  const trimmedText = text.trim();
+  const command = trimmedText.split(/\s+/)[0];
+  const arg = trimmedText.slice(command.length).trim();
+  const state = await readSiteState();
+
+  const persist = async () => {
+    await writeSiteState(state);
+    broadcast(withServerTime(state));
+  };
 
   switch (command) {
     case "/postpone": {
@@ -112,7 +133,7 @@ export async function POST(request: Request) {
         break;
       }
       state.launchAt = new Date(new Date(state.launchAt).getTime() + delta).toISOString();
-      await writeLaunchState(state);
+      await persist();
       await sendMessage(botToken, chatId, `Дата запуска перенесена: ${formatMoscow(new Date(state.launchAt))}`);
       break;
     }
@@ -123,7 +144,7 @@ export async function POST(request: Request) {
         break;
       }
       state.launchAt = new Date(new Date(state.launchAt).getTime() - delta).toISOString();
-      await writeLaunchState(state);
+      await persist();
       await sendMessage(botToken, chatId, `Дата запуска приближена: ${formatMoscow(new Date(state.launchAt))}`);
       break;
     }
@@ -134,20 +155,37 @@ export async function POST(request: Request) {
         break;
       }
       state.launchAt = date.toISOString();
-      await writeLaunchState(state);
+      await persist();
       await sendMessage(botToken, chatId, `Дата запуска установлена: ${formatMoscow(date)}`);
       break;
     }
     case "/freeze": {
       state.frozen = true;
-      await writeLaunchState(state);
+      await persist();
       await sendMessage(botToken, chatId, "Отсчёт приостановлен — на сайте покажется статичная плашка.");
       break;
     }
     case "/unfreeze": {
       state.frozen = false;
-      await writeLaunchState(state);
+      await persist();
       await sendMessage(botToken, chatId, `Отсчёт возобновлён. Дата запуска: ${formatMoscow(new Date(state.launchAt))}`);
+      break;
+    }
+    case "/banner": {
+      const banner = parseBanner(arg);
+      if (!banner) {
+        await sendMessage(botToken, chatId, "Формат: /banner Заголовок | Текст сообщения");
+        break;
+      }
+      state.banner = banner;
+      await persist();
+      await sendMessage(botToken, chatId, `Плашка обновлена:\n${banner.title}\n${banner.message}`);
+      break;
+    }
+    case "/banner_clear": {
+      state.banner = null;
+      await persist();
+      await sendMessage(botToken, chatId, "Плашка убрана с сайта.");
       break;
     }
     case "/status": {
@@ -159,6 +197,7 @@ export async function POST(request: Request) {
           `Дата запуска: ${formatMoscow(new Date(state.launchAt))}`,
           `Осталось: ${formatRemaining(remaining)}`,
           `Отсчёт: ${state.frozen ? "⏸ приостановлен" : "▶ идёт"}`,
+          `Плашка: ${state.banner ? `«${state.banner.title}»` : "не установлена"}`,
         ].join("\n")
       );
       break;

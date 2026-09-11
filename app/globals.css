@@ -54,6 +54,26 @@ body {
   border-color: #333;
 }
 
+.announcement {
+  border: 1px solid var(--border);
+  background: var(--ink);
+  color: #fff;
+  padding: 0.85rem 1.1rem;
+}
+
+.announcement__title {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.announcement__message {
+  font-size: 0.85rem;
+  color: #ddd;
+}
+
 .launch-badge {
   border: 1px solid var(--border);
   background: #fff;

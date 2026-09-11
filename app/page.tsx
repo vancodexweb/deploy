@@ -1,11 +1,12 @@
 import FeedbackForm from "./components/FeedbackForm";
-import LaunchCountdown from "./components/LaunchCountdown";
-import { readLaunchState } from "@/lib/launchState";
+import LiveSite from "./components/LiveSite";
+import { readSiteState } from "@/lib/siteState";
+import { withServerTime } from "@/lib/sitePayload";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const launchState = await readLaunchState();
+  const state = await readSiteState();
 
   return (
     <main
@@ -13,7 +14,7 @@ export default async function Home() {
       style={{ minHeight: "100vh" }}
     >
       <div className="w-100" style={{ maxWidth: 560 }}>
-        <LaunchCountdown initial={launchState} />
+        <LiveSite initial={withServerTime(state)} />
 
         <div className="card">
           <div className="card-body p-4 p-md-5">
